@@ -3,7 +3,7 @@
 #pragma newdecls required
 
 //Defines
-#define PLUGIN_VERSION "1.0.5"
+#define PLUGIN_VERSION "1.0.6"
 #define PLUGIN_DESCRIPTION "Simulates TF2 from 2007."
 
 //Sourcemod Includes
@@ -292,6 +292,41 @@ public Action OnPlayerRunCmd(int client, int& buttons, int& impulse, float vel[3
 	return Plugin_Continue;
 }
 
+public void TF2_OnButtonPressPost(int client, int button)
+{
+	if ((button & IN_ATTACK) == IN_ATTACK)
+	{
+		int iWeapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
+
+		if (!IsValidEntity(iWeapon))
+			return;
+		
+		char classname[64];
+		GetEntityClassname(iWeapon, classname, sizeof(classname));
+
+		if (StrContains(classname, "tf_weapon_pistol", false) == 0 && convar_LegacyPistol.BoolValue)
+			SetEntPropFloat(iWeapon, Prop_Send, "m_flNextPrimaryAttack", GetGameTime() + 0.1);
+	}
+}
+
+public void TF2_OnWeaponFirePost(int client, int weapon)
+{
+	if (convar_LegacyPistol.BoolValue)
+	{
+		char classname[64];
+		GetEntityClassname(weapon, classname, sizeof(classname));
+
+		if (StrContains(classname, "tf_weapon_pistol", false) == 0)
+			CreateTimer(0.0, Timer_Delay, weapon);
+	}
+}
+
+public Action Timer_Delay(Handle timer, any data)
+{
+	int weapon = data;
+	SetEntPropFloat(weapon, Prop_Send, "m_flNextPrimaryAttack", GetGameTime() + 1.0);
+}
+
 int GetActiveWeaponSlot(int client)
 {
 	if (client == 0 || client > MaxClients || !IsClientInGame(client) || !IsPlayerAlive(client))
@@ -412,18 +447,15 @@ public void Frame_ReplaceWeapon(DataPack pack)
 	TF2Items_SetQuality(hItem, 1);
 	TF2Items_SetLevel(hItem, 6);
 
-	if (convar_LegacyPistol.BoolValue && StrContains(classname, "tf_weapon_pistol", false) == 0)
+	TF2Items_SetAttribute(hItem, 0, 177, 1.60);
+	
+	if (convar_DisableAirblasts.BoolValue && StrContains(classname, "tf_weapon_flamethrower", false) == 0)
 	{
-		TF2Items_SetNumAttributes(hItem, 1);
-		TF2Items_SetAttribute(hItem, 0, 5, 1.75);
-	}
-	else if (convar_DisableAirblasts.BoolValue && StrContains(classname, "tf_weapon_flamethrower", false) == 0)
-	{
-		TF2Items_SetNumAttributes(hItem, 1);
-		TF2Items_SetAttribute(hItem, 0, 356, 1.0);
+		TF2Items_SetNumAttributes(hItem, 2);
+		TF2Items_SetAttribute(hItem, 1, 356, 1.0);
 	}
 	else
-		TF2Items_SetNumAttributes(hItem, 0);
+		TF2Items_SetNumAttributes(hItem, 1);
 	
 	int weapon = TF2Items_GiveNamedItem(client, hItem);
 	delete hItem;
