@@ -3,7 +3,7 @@
 #pragma newdecls required
 
 //Defines
-#define PLUGIN_VERSION "1.0.6"
+#define PLUGIN_VERSION "1.0.7"
 #define PLUGIN_DESCRIPTION "Simulates TF2 from 2007."
 
 //Sourcemod Includes
@@ -32,6 +32,7 @@ ConVar convar_UberOnActiveOnly;
 ConVar convar_GodPipes;
 ConVar convar_DisableTauntKills;
 ConVar convar_DisableInspection;
+ConVar convar_LowerWeaponSwitching;
 
 //Globals
 float g_Uber[MAXPLAYERS + 1];
@@ -76,6 +77,7 @@ public void OnPluginStart()
 	convar_GodPipes = CreateConVar("sm_tf2007_indestructable_pipes", "1", "Whether pipe bombs can take damage when shot.\n(1 = on, 0 = off)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	convar_DisableTauntKills = CreateConVar("sm_tf2007_disable_taunt_kills", "1", "Disable taunt kills.\n(1 = on, 0 = off)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	convar_DisableInspection = CreateConVar("sm_tf2007_disable_inspection", "1", "Disable player weapon inspections.\n(1 = on, 0 = off)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
+	convar_LowerWeaponSwitching = CreateConVar("sm_tf2007_lower_weapon_switching", "1", "Lower the amount of time it takes to switch between weapons.\n(1 = on, 0 = off)", FCVAR_NOTIFY, true, 0.0, true, 1.0);
 	AutoExecConfig();
 	
 	HookEvent("player_spawn", Event_OnPlayerSpawn);
@@ -446,16 +448,24 @@ public void Frame_ReplaceWeapon(DataPack pack)
 	TF2Items_SetItemIndex(hItem, default_index);
 	TF2Items_SetQuality(hItem, 1);
 	TF2Items_SetLevel(hItem, 6);
-
-	TF2Items_SetAttribute(hItem, 0, 177, 1.60);
+	
+	int attrs;
+	
+	if (convar_LowerWeaponSwitching.BoolValue)
+	{
+		TF2Items_SetAttribute(hItem, 0, 177, 1.60);
+		attrs++;
+	}
 	
 	if (convar_DisableAirblasts.BoolValue && StrContains(classname, "tf_weapon_flamethrower", false) == 0)
 	{
 		TF2Items_SetNumAttributes(hItem, 2);
 		TF2Items_SetAttribute(hItem, 1, 356, 1.0);
+		attrs++;
 	}
-	else
-		TF2Items_SetNumAttributes(hItem, 1);
+	
+	if (attrs > 0)
+		TF2Items_SetNumAttributes(hItem, attrs);
 	
 	int weapon = TF2Items_GiveNamedItem(client, hItem);
 	delete hItem;
